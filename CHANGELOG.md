@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - `read_db` ignored its `TO_DB` argument and always read the default dataset folder
+- The image files were read in file system order, so the train/test split and the scores differed between Windows and Linux: they are now sorted
 - The PCA scatter plot relied on a global `labels` variable: it is now a parameter
 - The SVM confusion matrix showed class numbers instead of breed names
 - Wrong panel title in the padding comparison figure ("Padding Black" for the propagated blur)

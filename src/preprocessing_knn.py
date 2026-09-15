@@ -84,7 +84,7 @@ def read_db(subset_dogs=None, TO_DB=IMG_FULL, color=True):
         label_names[next_label] = dog_breed
         nb_img = 0
 
-        for img in os.listdir(os.path.join(TO_DB, subdir)):
+        for img in sorted(os.listdir(os.path.join(TO_DB, subdir))):
             images.append(read_img(n_value, dog_breed, img, TO_DB=TO_DB, color=color))
             nb_img += 1
 
@@ -215,7 +215,7 @@ def read_and_crop_db(subset_dogs=None, TO_DB=PATH_TO_DB, color=True):
         label_names[next_label] = dog_breed
         nb_img = 0
 
-        for img_file in os.listdir(os.path.join(img_root, subdir)):
+        for img_file in sorted(os.listdir(os.path.join(img_root, subdir))):
             img, dog = read_and_crop(n_value, dog_breed, img_file, TO_DB=TO_DB, color=color)
             images.append(img)
             dogs.append(dog)
