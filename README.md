@@ -62,7 +62,7 @@ Accuracy on the test set (25 % of the images, stratified split), as reported in 
 
 The kNN ablation shows that PCA and HOG are complementary (in the CI run, PCA only: 32.7 %, HOG only: 43.0 %, both: 44.2 %). The SVM confuses mostly the Kerry blue terrier and the groenendael, two dark, long-haired breeds with similar silhouettes.
 
-The `pipeline` job of the CI reruns the classical pipeline on every push and publishes the scores in its summary. With the versions pinned in `requirements.txt`, the grid search selects $C = 20$, $\gamma = 0.005$ and 10 components per class, and the tuned SVMs reach 61.0 % (one-versus-one) and 59.4 % (one-versus-rest): the exact values move slightly with the library versions, the conclusion does not.
+The `pipeline` job of the CI reruns the classical pipeline on every push and publishes the scores in its summary. With the versions pinned in `requirements.txt`, the grid search selects $\gamma = 0.005$ and 10 components per class, and the tuned SVMs reach about 61 % (one-versus-one) and 59 % (one-versus-rest): the exact values move by a point or two with the library versions and the platform, the conclusion does not.
 
 ## 🚀 Getting Started
 
