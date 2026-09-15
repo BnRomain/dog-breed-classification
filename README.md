@@ -1,240 +1,162 @@
-# Intro-ML — Projet d'Introduction au Machine Learning
+# 🐶 Dog Breed Classification
 
-**Polytech Nice Sophia · MAM3 · 8–12 juin 2026**
-Encadrants : Mahmoud Elsawy & Jean-Luc Bouchot (INRIA)
+[![CI](https://github.com/BnRomain/dog-breed-classification/actions/workflows/ci.yml/badge.svg)](https://github.com/BnRomain/dog-breed-classification/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/BnRomain/dog-breed-classification/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/BnRomain/dog-breed-classification/actions/workflows/github-code-scanning/codeql)
+[![Release](https://img.shields.io/github/v/release/BnRomain/dog-breed-classification?sort=semver)](https://github.com/BnRomain/dog-breed-classification/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-1.9-F7931E?logo=scikitlearn&logoColor=white)
 
----
+Recognize the breed of a dog from a photo, among six breeds of the **Stanford Dogs** dataset, with two approaches compared on the same data:
 
-Ce dépôt contient le travail du groupe pour le projet d'initiation au Machine Learning. L'objectif principal est de construire un **pipeline de classification d'images de chiens** (dataset PASCAL VOC) en Python.
+- a **classical pipeline** built from scratch with scikit-learn and scikit-image: bounding box cropping, aspect-preserving resizing, **PCA** and **HOG** features, then **kNN** and **SVM** classifiers, tuned by grid search;
+- **transfer learning** with a frozen **VGG16** network and a small trained head.
 
-## Structure du dépôt
+The classical pipeline plateaus around **60 %** of correct answers, whatever the classifier or its tuning. Transfer learning reaches **98 %**. The lesson of the project: the features set the ceiling, not the classifier.
 
-```
-Intro-ML/
-├── README.md
-├── .gitignore
-├── code/
-│   └── Script01_PreprocessingExploration.py   # Script principal à compléter
-├── SmallDB/                                    # Dataset (voir section setup)
-│   ├── Images/                                 # Images par race de chien
-│   └── Annotation/                             # Bounding boxes (fichiers XML Pascal VOC)
-└── figures/                                    # Figures générées (créé automatiquement)
-```
+| Context | Authors | Supervisors |
+| --- | --- | --- |
+| Introduction to Machine Learning, one-week project (MAM3), June 2026, Polytech Nice Sophia (Université Côte d'Azur) | Romain Ben, Zouhair Saitout, Evrard Lecureur | Mahmoud Elsawy and Jean-Luc Bouchot (Inria) |
 
-## Mise en place de l'environnement
+## 📸 Preview
+
+| PCA projection: the breeds overlap | Transfer learning: 5 errors out of 251 |
+| --- | --- |
+| ![Projection of the whole dataset on the first two principal components, one color per breed: the classes are mixed](docs/figures/pca_scatter_plots.png) | ![Confusion matrix of the VGG16 transfer learning, almost diagonal](docs/figures/confusion_matrix_vgg16.png) |
+
+![kNN analysis: effect of the StandardScaler, bias-variance trade-off against k, and comparison of the PCA, HOG and combined features](docs/figures/task6_analysis.png)
+
+## 🎯 The Problem
+
+The dataset, `SmallDB/`, is a subset of Stanford Dogs: 1,002 photos of six breeds (Chihuahua, basset, Kerry blue terrier, groenendael, malinois and chow), each with a Pascal VOC XML file giving the bounding box of the dog. The classes are balanced: the Shannon entropy of the class distribution is 1.786, close to the maximum ln 6 = 1.792, so the accuracy is a fair metric.
+
+Telling these breeds apart requires fine details (ears, muzzle, coat texture) that generic descriptors do not capture. The project measures how far a classical pipeline can go, explains why it plateaus, and shows that learned features remove the ceiling.
+
+## 🛠️ How It Works
+
+### Classical pipeline (`src/preprocessing_knn.py` and `src/svm_grid_search.py`)
+
+1. **Cropping**: each photo is cropped to the bounding box of its XML annotation, which removes most of the background.
+2. **Resizing without distortion**: the crop is scaled by $\min(h_r, w_r)$ to fit a $64 \times 64$ canvas and centered. The empty borders are filled by one of six padding strategies (white, black, continuous, reflect, random, propagated blur). Uniform padding creates artificial edges that fool the HOG descriptor, so the pipeline uses a **propagated blur** of the border pixels.
+3. **PCA**: a global PCA gives the scree plot, the 2D projection and the reconstruction of an image from its first $k$ components. For classification, one PCA is fitted **per class** and each image is projected on the 5 first components of each of them.
+4. **HOG**: Sobel gradients, a $4 \times 4$ grid of cells and 8 orientation bins per cell, implemented by hand.
+5. **kNN**: the PCA and HOG features are concatenated and standardized (the `StandardScaler` matters: without it the PCA coordinates dominate the distances). The analysis covers the effect of the scaler, the bias-variance trade-off against $k$ and an ablation of the features.
+6. **SVM**: the same features are wrapped in scikit-learn transformers inside a `Pipeline` and a `FeatureUnion`, which avoids data leakage. A `GridSearchCV` (3 folds) tunes the number of components, $C$ and $\gamma$ of the RBF kernel, and the one-versus-one and one-versus-rest strategies are compared with linear and RBF kernels.
+
+### Transfer learning (`src/transfer_learning.py`)
+
+The color crops are resized to $224 \times 224$ and fed to **VGG16** pre-trained on ImageNet, with its convolutional layers frozen. A head made of a global average pooling, a dense layer of 256 units with dropout and a softmax over the six breeds is trained for 8 epochs.
+
+## 📊 Results
+
+Accuracy on the test set (25 % of the images, stratified split), as reported in the [report](docs/report-fr.pdf):
+
+| Model | Features | Test accuracy |
+| --- | --- | --- |
+| kNN ($k = 5$, standardized) | PCA + HOG | 45.0 % |
+| SVM one-versus-one, linear kernel | PCA + HOG | 52.6 % |
+| SVM one-versus-rest, linear kernel | PCA + HOG | 48.6 % |
+| SVM one-versus-one, RBF kernel (tuned) | PCA + HOG | 58.6 % |
+| SVM one-versus-rest, RBF kernel (tuned) | PCA + HOG | 59.4 % |
+| **Transfer learning, VGG16 frozen + trained head** | learned | **98.0 %** |
+
+The kNN ablation shows that PCA and HOG are complementary (PCA only: 32.7 %, HOG only: 42.6 %, both: 45.0 %). The SVM confuses mostly the Kerry blue terrier and the groenendael, two dark, long-haired breeds with similar silhouettes.
+
+The `pipeline` job of the CI reruns the classical pipeline on every push and publishes the scores in its summary. With the versions pinned in `requirements.txt`, the grid search selects $C = 20$, $\gamma = 0.005$ and 10 components per class, and the tuned SVMs reach 61.0 % (one-versus-one) and 59.4 % (one-versus-rest): the exact values move slightly with the library versions, the conclusion does not.
+
+## 🚀 Getting Started
+
+Requires Python 3.12. The dataset is included in the repository.
 
 ```bash
-# Cloner ce dépôt
-git clone https://github.com/BnRomain/Intro-ML.git
-cd Intro-ML
+git clone https://github.com/BnRomain/dog-breed-classification.git
+cd dog-breed-classification
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 
-# Créer l'environnement virtuel
-python -m venv MLPythonVenv
-
-# Activer (Linux/Mac)
-source MLPythonVenv/bin/activate
-# Activer (Windows)
-MLPythonVenv\Scripts\activate
-
-# Installer les dépendances
-pip install jupyter seaborn pandas scikit-learn scikit-image matplotlib numpy
+python src/preprocessing_knn.py    # figures, kNN analysis, cached arrays (about 30 s)
+python src/svm_grid_search.py      # SVM pipeline and grid search (about 2 min)
 ```
 
-> **Dataset** : cloner le repo de l'école (`git clone git@github.com:pns-mam/ml-intro.git`) puis copier le dossier `SmallDB/` à la racine de ce repo.
+The figures are written to `docs/figures/` and the data matrices to `cache/`. Two more scripts regenerate the class balance bar plot and the PCA reconstruction with $256 \times 256$ images used in the report:
 
-Pour lancer le script principal :
 ```bash
-cd code
-python Script01_PreprocessingExploration.py
+python scripts/make_class_balance.py
+python scripts/make_pca_reconstruction.py
 ```
 
----
+The transfer learning needs TensorFlow, which downloads the VGG16 weights on first run (about 60 MB). A GPU is recommended: on a CPU, count tens of minutes for the 8 epochs:
 
-## Pipeline général
-
-Le script suit ce pipeline :
-
-```
-Images brutes
-    -> Lecture + recadrage (bounding box XML)
-    -> Redimensionnement uniforme 64x64
-    -> Conversion en matrice de données
-    -> PCA (réduction dimensionnelle + features)
-    -> HOG (features de gradients)
-    -> Combinaison PCA + HOG
-    -> Normalisation (StandardScaler)
-    -> Classification (kNN, SVM...)
-    -> Evaluation (train/test error, confusion matrix)
+```bash
+pip install tensorflow
+python src/transfer_learning.py    # set ARCHITECTURE = "xception" in the script to try Xception
 ```
 
----
+## 🗂️ Repository Structure
 
-## Tâches à implémenter
-
-Le script contient 5 sections `### STUDENT IMPLEMENTATION ###` à compléter.
-
----
-
-### Tâche 1 — Entropie de Shannon (`entropy`)
-
-**Où :** fonction `entropy(p)`, section 2 Exploratory Data Analysis
-
-**Objectif :** Mesurer l'équilibre des classes dans le dataset. Une entropie maximale indique des classes parfaitement équilibrées.
-
-La formule de l'entropie de Shannon d'une distribution discrète P = (p_1, ..., p_n) :
-
-```
-H(P) = -sum_i [ p_i * ln(p_i) ]
-```
-
-Ce qu'il faut faire :
-- Convertir `p` en tableau numpy float
-- Normaliser pour que la somme vaille 1 (probabilités empiriques)
-- Exclure les p_i = 0 avant d'appliquer le log (éviter `log(0) = -inf`)
-
----
-
-### Tâche 2 — Redimensionnement avec préservation du ratio (`resize_and_pad`)
-
-**Où :** fonction `resize_and_pad(img, target_size, pad_type)`, section 4
-
-**Objectif :** Mettre toutes les images à une taille fixe (64x64) sans déformer les chiens. Stratégie : calculer le ratio de mise à l'échelle, redimensionner en gardant les proportions, puis centrer sur un canvas vide.
-
-Ce qu'il faut calculer :
-- `h_r = target_height / image_height` et `w_r = target_width / image_width`
-- Le ratio à appliquer = `min(h_r, w_r)` pour ne pas déborder
-- `new_h = int(h * ratio)` et `new_w = int(w * ratio)` — nouvelles dimensions
-- Les coordonnées `bottom, top, left, right` pour centrer l'image redimensionnée sur le canvas
-
-Trois types de padding requis :
-- `'white'` : canvas initialisé à 1.0 (déjà géré après votre code)
-- `'black'` : canvas initialisé à 0.0 (déjà géré après votre code)
-- `'continuous'` : remplissage avec la valeur du pixel le plus proche du bord
-
----
-
-### Tâche 3.1 — Projection PCA (`project_onto_PCA`)
-
-**Où :** fonction `project_onto_PCA(n_components, pca_model, data)`, section 5
-
-**Objectif :** Projeter les données sur les `n_components` premières composantes principales d'un modèle PCA déjà entraîné.
-
-Ce qu'il faut faire :
-- Utiliser `pca_model.transform(data)` pour projeter
-- Retourner uniquement les `n_components` premières colonnes du résultat
-
----
-
-### Tâche 3.2 — Scree Plot PCA (`visualize_var_pcs`)
-
-**Où :** fonction `visualize_var_pcs(pca, fig_path)`, section 5
-
-**Objectif :** Visualiser quelle proportion de la variance est capturée par chaque composante principale.
-
-Ce qu'il faut tracer :
-- Un barplot de `pca.explained_variance_ratio_` (variance individuelle par composante)
-- Une courbe de `np.cumsum(explained_variance_ratio_)` (variance cumulée)
-- Une ligne horizontale de référence à 90% pour repérer le nombre minimal de composantes à conserver
-- Retourner la figure dans la variable `fig`
-
----
-
-### Tâche 3.3 — Scatter plot 2D PCA (`plot_whole_db_on_2d`)
-
-**Où :** fonction `plot_whole_db_on_2d(pca, data_mtx, fig_path)`, section 5
-
-**Objectif :** Projeter tout le dataset sur les 2 premières composantes principales et vérifier visuellement si les classes sont séparables.
-
-Ce qu'il faut faire :
-- Appeler `project_onto_PCA` pour obtenir les coordonnées 2D de chaque image
-- Créer un scatter plot coloré par classe (une couleur par race de chien)
-- Ajouter une légende avec les noms de races
-- Retourner la figure dans la variable `fig`
-
-Bonus (non obligatoire) : tenter un scatter plot 3D avec les 3 premières composantes.
-
----
-
-### Tâche 4 — Reconstruction PCA (`display_pca_approx`)
-
-**Où :** fonction `display_pca_approx(img, pca, target_size, fig_path)`, section 5
-
-**Objectif :** Montrer qu'avec suffisamment de composantes principales on peut reconstruire une image fidèlement. Visualiser l'évolution de la qualité de reconstruction en fonction du nombre de composantes k.
-
-La reconstruction à partir de k composantes principales :
-
-```
-x_hat_k = mean + sum_{i=1}^{k} <x - mean, u_i> * u_i
+```text
+dog-breed-classification/
+├── src/
+│   ├── preprocessing_knn.py      loading, cropping, resizing, PCA, HOG and kNN analysis
+│   ├── svm_grid_search.py        scikit-learn pipeline, grid search, OvO versus OvR
+│   └── transfer_learning.py      VGG16 or Xception with a trained head (TensorFlow)
+├── tests/                        pytest tests of the preprocessing and feature functions
+├── scripts/                      figures of the report and generation of the slides
+├── docs/
+│   ├── figures/                  figures generated by the scripts
+│   ├── report-fr.pdf, .tex       report (French, 5 pages)
+│   ├── slides-fr.pptx            slides of the 10-minute talk (French)
+│   └── talk-script-fr.md         talk script, slide by slide (French)
+├── SmallDB/                      dataset: images and Pascal VOC annotations, six breeds
+├── .github/                      workflows, issue and pull request templates, Dependabot
+├── requirements.txt              dependencies (pinned versions)
+├── requirements-dev.txt          test, lint and slides dependencies
+├── pyproject.toml                Ruff, pytest and coverage configuration
+├── CITATION.cff                  citation metadata
+├── CODE_OF_CONDUCT.md            code of conduct
+├── CONTRIBUTING.md               contributing guide
+├── LICENSE                       MIT License
+└── SECURITY.md                   security policy
 ```
 
-En pratique avec scikit-learn : projeter sur les k premiers axes, mettre à zéro les composantes > k, puis appeler `pca.inverse_transform(...)`.
+## ✅ Tests and Quality
 
-Ce qu'il faut faire :
-- Boucler sur plusieurs valeurs de k (ex. 1, 5, 10, 20, 50, 100, ...)
-- Pour chaque k : reconstruire l'image et calculer l'erreur L2 `||original - reconstruction||`
-- Afficher chaque reconstruction dans un subplot (la grille 4x4 est déjà initialisée)
+On every pull request and every push to `main`, GitHub Actions runs:
 
----
+- **python**: Ruff lint and format check, then `pytest` with a coverage report on the preprocessing, PCA and HOG functions (the CI fails below 60 %);
+- **pipeline**: the classical pipeline end to end on `SmallDB`, with the scores in the job summary and the figures as an artifact;
+- **docs**: markdownlint, then lychee checks the links, heading anchors and images of the Markdown files;
+- **Dependency review**: blocks a pull request that adds a vulnerable dependency;
+- **CodeQL**: security analysis of the Python code and the workflows.
 
-### Tâche 5 — HOG : Histogramme de Gradients Orientés (`compute_hog`)
+The `main` branch is protected: every change goes through a pull request and can only be merged once these checks pass. Secret scanning with push protection blocks any committed credential.
 
-**Où :** fonction `compute_hog(image, nb_height_cells, nb_width_cells, nb_bins)`, section 5
+Versions follow [Semantic Versioning](https://semver.org/) and are published as [GitHub releases](https://github.com/BnRomain/dog-breed-classification/releases): see the [contributing guide](CONTRIBUTING.md#versioning-and-releases).
 
-**Objectif :** Extraire des features classiques de texture basées sur les orientations locales des contours. Ces features complètent les features PCA pour la classification.
+**Dependabot** monitors the Python dependencies and the GitHub Actions. Patch and minor updates are merged automatically once the required checks of `main` have passed. See also the [security policy](SECURITY.md) and the [wiki](https://github.com/BnRomain/dog-breed-classification/wiki).
 
-Principe algorithmique :
-1. Les gradients `g_x` (Sobel horizontal) et `g_y` (Sobel vertical) sont déjà calculés
-2. Magnitude : `|g| = sqrt(g_x^2 + g_y^2)`, Orientation : `theta = arctan2(g_y, g_x)` dans `[0, pi)`
-3. Diviser l'image en une grille de `nb_height_cells x nb_width_cells` cellules
-4. Dans chaque cellule, accumuler les magnitudes dans `nb_bins` intervalles angulaires équirépartis sur `[0, pi)`
+## 📄 Report, Slides and Talk Script
 
-Ce qu'il faut implémenter :
-- Boucler sur chaque cellule `(i, j)` dans la grille
-- Extraire la région correspondante de `magnitude` et `orientation`
-- Pour chaque pixel : trouver le bon bin avec `int(theta / bin_width) % nb_bins` et y ajouter la magnitude
-- Stocker dans `output[i, j, bin]`
+The deliverables of the project are in French:
 
----
+- **📑 Report (5 pages)**, with the analysis of every step and the choices made: [read the report](docs/report-fr.pdf) (source: [`docs/report-fr.tex`](docs/report-fr.tex))
+- **📊 Slides** of the 10-minute talk: [`docs/slides-fr.pptx`](docs/slides-fr.pptx), generated by [`scripts/build_slides.py`](scripts/build_slides.py)
+- **🎤 Talk script**, slide by slide for the three speakers, with the answers prepared for the jury: [read the script](docs/talk-script-fr.md)
 
-### Analyse : Impact du StandardScaler
+## 🙏 Acknowledgments
 
-Une fois le pipeline complet opérationnel, faire l'expérience suivante :
+- The scripts started from the templates of the course repository [pns-mam/ml-intro](https://github.com/pns-mam/ml-intro) (MIT License), written by Mahmoud Elsawy and Jean-Luc Bouchot, who also supervised the project.
+- `SmallDB/` is a subset of the [Stanford Dogs dataset](http://vision.stanford.edu/aditya86/ImageNetDogs/): A. Khosla, N. Jayadevaprakash, B. Yao and L. Fei-Fei, *Novel Dataset for Fine-Grained Image Categorization*, CVPR workshop on fine-grained visual categorization, 2011. The images come from ImageNet and are provided for non-commercial research and educational use.
 
-1. Lancer le script tel quel (avec `StandardScaler`) — noter train error et test error
-2. Commenter les 3 lignes du `StandardScaler` et passer `X_train_combined` / `X_test_combined` directement au kNN
-3. Observer et **expliquer dans le rapport** pourquoi la différence est aussi marquée
+## 🤝 Contributing
 
----
+Contributions are welcome. Please read the [contributing guide](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md) before opening an issue or a pull request. Security vulnerabilities must be reported privately, as described in the [security policy](SECURITY.md).
 
-## Livrables
+## 📜 License
 
-| Livrable | Détail |
-|----------|--------|
-| Script complété | `Script01_PreprocessingExploration.py` avec toutes les tâches |
-| Figures | Dossier `figures/` avec les plots générés |
-| Rapport | 5 pages max, PDF, analyse des résultats et choix effectués |
-| Présentation | Courte présentation orale |
+The code and the documentation are released under the [MIT License](LICENSE). The dataset in `SmallDB/` keeps the terms of Stanford Dogs and ImageNet, see [Acknowledgments](#-acknowledgments).
 
-**Deadline : jeudi 11 juin 2026, 17h00**
-Envoyer à `mahmoud.elsawy@inria.fr` et `jean-luc.bouchot@inria.fr`
+## 📚 Citation
 
----
-
-## Calendrier
-
-| Jour | Contenu |
-|------|---------|
-| Lundi 8 juin | Setup, chargement des données, Tâches 1 et 2 |
-| Mardi 9 juin | Tâches 3.1/3.2/3.3 (PCA), Tâche 4 (reconstruction) |
-| Mercredi 10 juin | Tâche 5 (HOG), SVM, hyperparamètres, comparaison d'algorithmes |
-| Jeudi 11 juin matin | Finalisation rapport + envoi avant 17h |
-| Vendredi 12 juin matin | Evaluation |
-
----
-
-## Ressources utiles
-
-- [Repo de l'école](https://github.com/pns-mam/ml-intro)
-- [Documentation scikit-learn](https://scikit-learn.org/stable/)
-- [PCA scikit-learn](https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html)
-- [Documentation skimage](https://scikit-image.org/docs/stable/)
+To cite this project, use the metadata in [`CITATION.cff`](CITATION.cff) or the "Cite this repository" button on GitHub.

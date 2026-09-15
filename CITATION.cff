@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use this project, please cite it using the metadata below."
+type: software
+title: "Dog breed classification: from a classical PCA and HOG pipeline to transfer learning"
+abstract: >-
+  Classification of six dog breeds of the Stanford Dogs dataset, comparing a
+  classical pipeline built with scikit-learn and scikit-image (bounding box
+  cropping, aspect-preserving resizing, PCA and HOG features, kNN and SVM
+  classifiers tuned by grid search) with transfer learning on a frozen VGG16
+  network. The classical pipeline plateaus around 60 % of accuracy, the
+  transfer learning reaches 98 %.
+authors:
+  - given-names: Romain
+    family-names: Ben
+    affiliation: "Polytech Nice Sophia, Université Côte d'Azur"
+  - given-names: Zouhair
+    family-names: Saitout
+    affiliation: "Polytech Nice Sophia, Université Côte d'Azur"
+  - given-names: Evrard
+    family-names: Lecureur
+    affiliation: "Polytech Nice Sophia, Université Côte d'Azur"
+version: 1.1.0
+date-released: 2026-09-15
+license: MIT
+repository-code: "https://github.com/BnRomain/dog-breed-classification"
+keywords:
+  - machine learning
+  - image classification
+  - dog breeds
+  - Stanford Dogs
+  - PCA
+  - HOG
+  - kNN
+  - SVM
+  - transfer learning
+  - VGG16
+  - scikit-learn
+  - Python

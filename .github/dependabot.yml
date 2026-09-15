@@ -1,0 +1,32 @@
+version: 2
+
+# Tracked dependencies: the Python packages pinned in requirements*.txt and the
+# GitHub Actions used by the workflows. TensorFlow, only needed by the transfer
+# learning script, is installed separately and is not pinned (see the README).
+
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      python-patch-minor:
+        update-types:
+          - "patch"
+          - "minor"
+        patterns:
+          - "*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      actions-patch-minor:
+        update-types:
+          - "patch"
+          - "minor"
+        patterns:
+          - "*"
