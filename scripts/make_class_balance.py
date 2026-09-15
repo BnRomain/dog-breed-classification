@@ -1,17 +1,20 @@
-# -*- coding: utf-8 -*-
-"""Appelle plot_barplot du Script01 avec les vrais labels de SmallDB et sauvegarde la figure."""
-import os, sys
+"""Draws the class balance bar plot (docs/figures/class_balance.png) from the SmallDB counts."""
+
+import os
+import sys
+
 import matplotlib
+
 matplotlib.use("Agg")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-CODE = os.path.join(HERE, "..", "code")
-FIGS = os.path.join(HERE, "..", "figures")
-sys.path.insert(0, CODE)
+SRC = os.path.join(HERE, "..", "src")
+FIGS = os.path.join(HERE, "..", "docs", "figures")
+sys.path.insert(0, SRC)
 
-import Script01_PreprocessingExploration as S
+import preprocessing_knn as S  # noqa: E402
 
-# Vrais comptes lus dans SmallDB/Images (ordre des dossiers triés)
+# Counts of SmallDB/Images, in the sorted order of the folders
 breeds = [
     ("Chihuahua", 152),
     ("basset", 175),
