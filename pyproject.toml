@@ -1,0 +1,23 @@
+[tool.ruff]
+line-length = 120
+src = ["src", "tests", "scripts"]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "--cov --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src"]
+# The SVM grid search and the transfer learning run on the whole dataset at
+# import time: the "Pipeline" workflow exercises them, not pytest.
+omit = ["src/svm_grid_search.py", "src/transfer_learning.py"]
+
+[tool.coverage.report]
+fail_under = 60
+show_missing = true
+exclude_also = ['if __name__ == "__main__":']

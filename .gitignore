@@ -1,10 +1,41 @@
+# Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
 MLPythonVenv/
-figures/
-.env
-.DS_Store
-*.ipynb_checkpoints
+
+# Arrays cached by src/preprocessing_knn.py for src/svm_grid_search.py
+cache/
+
+# Keras weights downloaded by src/transfer_learning.py
+*.h5
+*.keras
+
+# LaTeX (intermediate files)
+*.aux
+*.fdb_latexmk
+*.fls
 *.log
-*.npy
+*.nav
+*.out
+*.snm
+*.synctex.gz
+*.toc
+*.vrb
+
+# Link checker cache
+.lycheecache
+
+# OS and editors
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.ipynb_checkpoints
+.env

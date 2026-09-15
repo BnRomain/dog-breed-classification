@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Lint and check formatting with Ruff
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Run tests with coverage
+        run: python -m pytest -v
+
+      - name: Publish the coverage summary
+        if: always()
+        run: python -m coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
+
+  # Runs the classical pipeline end to end on SmallDB and regenerates the
+  # figures of docs/figures/. The transfer learning script needs TensorFlow and
+  # the VGG16 weights: it is not run here.
+  pipeline:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      MPLBACKEND: Agg
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Preprocessing, PCA, HOG and kNN
+        run: python src/preprocessing_knn.py | tee knn.log
+
+      - name: SVM pipeline, grid search, OvO versus OvR
+        run: python src/svm_grid_search.py | tee svm.log
+
+      - name: Class balance and 256x256 PCA reconstruction figures
+        run: |
+          python scripts/make_class_balance.py
+          python scripts/make_pca_reconstruction.py
+
+      - name: Publish the scores
+        run: |
+          {
+            echo "## Scores"
+            echo
+            echo '```text'
+            grep -E "Entropy|Error Rate" knn.log
+            grep -E "Similarity|Optimal|Score" svm.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the figures
+        uses: actions/upload-artifact@v7
+        with:
+          name: figures
+          path: docs/figures
+
+  docs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Lint Markdown with markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@v24
+        with:
+          globs: "**/*.md"
+
+      # Offline mode checks the links to repository files, the heading anchors
+      # and the images without depending on the availability of external sites.
+      - name: Check links, anchors and images with lychee
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --offline --include-fragments --no-progress .
+          jobSummary: true

@@ -1,0 +1,60 @@
+name: Bug report
+description: Report a crash, a wrong result or a problem in the documentation.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+        Please do not report security vulnerabilities here: follow the [security policy](https://github.com/BnRomain/dog-breed-classification/security/policy) instead.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - "Preprocessing, PCA, HOG and kNN (src/preprocessing_knn.py)"
+        - "SVM pipeline and grid search (src/svm_grid_search.py)"
+        - "Transfer learning (src/transfer_learning.py)"
+        - "Tests (tests/)"
+        - "Figures, report or slides (docs/, scripts/)"
+        - "CI / GitHub Actions"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened, and what did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: The commands you ran, from a fresh clone if possible.
+      placeholder: |
+        pip install -r requirements.txt
+        python src/preprocessing_knn.py
+        python src/svm_grid_search.py
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output and traceback
+      description: Paste the relevant output. It is formatted as code automatically.
+      render: shell
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Python version and the versions of numpy, scikit-learn and scikit-image (`pip freeze`).
+      placeholder: "Windows 11, Python 3.12.10, scikit-learn 1.9.1, scikit-image 0.26.0"
+    validations:
+      required: true
